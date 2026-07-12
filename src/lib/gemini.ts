@@ -13,4 +13,5 @@ export function getGemini(): GoogleGenAI {
   return client;
 }
 
-export const GEMINI_MODEL = "gemini-2.5-flash";
+/* Alias stabil: selalu menunjuk model flash terbaru yang tersedia untuk API key ini. */
+export const GEMINI_MODEL = "gemini-flash-latest";
