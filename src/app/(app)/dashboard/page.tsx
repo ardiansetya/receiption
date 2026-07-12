@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExpenseChart } from "@/components/app/expense-chart";
+import { InsightsCard } from "@/components/app/insights-card";
 import { formatIDR, formatMonthLong, currentMonth } from "@/lib/format";
 
 type Summary = {
@@ -177,7 +178,7 @@ export default function DashboardPage() {
                 {hasData ? (
                   <ExpenseChart data={data.series} />
                 ) : (
-                  <div className="flex h-[220px] flex-col items-center justify-center gap-3 text-center">
+                  <div className="flex h-55 flex-col items-center justify-center gap-3 text-center">
                     <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                       <Receipt size={24} />
                     </span>
@@ -250,6 +251,12 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          {hasData && (
+            <div className="mt-4">
+              <InsightsCard />
+            </div>
+          )}
         </>
       )}
     </div>
