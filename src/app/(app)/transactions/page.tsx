@@ -35,6 +35,11 @@ import {
   type TransactionDraft,
 } from "@/components/app/transaction-form";
 import { ReceiptScanDialog } from "@/components/app/receipt-scan-dialog";
+import {
+  ReceiptReviewDialog,
+  type ReceiptReviewData,
+} from "@/components/app/receipt-review-dialog";
+import { TransactionDetailDialog } from "@/components/app/transaction-detail-dialog";
 import type { Category, Transaction } from "@/db/schema";
 import { CATEGORY_LABELS } from "@/lib/categories";
 import { currentMonth, formatDateID, formatIDR } from "@/lib/format";
@@ -65,6 +70,9 @@ function TransactionsContent() {
   const [scanOpen, setScanOpen] = useState(searchParams.get("scan") === "1");
   const [editing, setEditing] = useState<TransactionDraft | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewData, setReviewData] = useState<ReceiptReviewData | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const { data, isPending } = useQuery({
     queryKey: ["transactions", month, category],
@@ -211,13 +219,23 @@ function TransactionsContent() {
                 >
                   <CategoryIcon category={t.category} />
                 </span>
-                <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 text-left"
+                  onClick={() => t.source === "ocr" && setDetailId(t.id)}
+                  disabled={t.source !== "ocr"}
+                  aria-label={
+                    t.source === "ocr"
+                      ? `Lihat rincian nota ${t.title}`
+                      : undefined
+                  }
+                >
                   <p className="truncate text-sm font-medium">{t.title}</p>
                   <p className="text-xs text-muted-foreground">
                     {CATEGORY_LABELS[t.category]} · {formatDateID(t.date)}
                     {t.source === "ocr" ? " · dari struk" : ""}
                   </p>
-                </div>
+                </button>
                 <p
                   className={cn(
                     "font-mono text-sm font-semibold",
@@ -260,10 +278,40 @@ function TransactionsContent() {
       <ReceiptScanDialog
         open={scanOpen}
         onOpenChange={setScanOpen}
-        onResult={(draft) => {
-          setEditing(draft);
-          setFormOpen(true);
+        onResult={(result) => {
+          if (result.items.length > 0) {
+            setReviewData({
+              storeName: result.storeName,
+              date: result.date,
+              total: result.total,
+              items: result.items,
+            });
+            setReviewOpen(true);
+          } else {
+            /* Item tidak terbaca: fallback satu transaksi */
+            setEditing({
+              type: "expense",
+              category: result.category,
+              amount: result.total,
+              title: result.storeName,
+              note: "",
+              date: result.date,
+              source: "ocr",
+            });
+            setFormOpen(true);
+          }
         }}
+      />
+
+      <ReceiptReviewDialog
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        data={reviewData}
+      />
+
+      <TransactionDetailDialog
+        id={detailId}
+        onClose={() => setDetailId(null)}
       />
 
       <Dialog

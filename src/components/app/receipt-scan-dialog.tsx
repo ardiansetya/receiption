@@ -13,13 +13,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Category } from "@/db/schema";
-import type { TransactionDraft } from "./transaction-form";
+import type { ReviewItem } from "./receipt-review-dialog";
 
-type OcrResponse = {
+export type OcrResponse = {
   storeName: string;
   total: number;
   date: string;
   category: Category;
+  items: ReviewItem[];
 };
 
 export function ReceiptScanDialog({
@@ -29,8 +30,8 @@ export function ReceiptScanDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Dipanggil dengan draft transaksi hasil OCR untuk direview pengguna. */
-  onResult: (draft: TransactionDraft) => void;
+  /** Dipanggil dengan hasil OCR mentah untuk direview pengguna. */
+  onResult: (result: OcrResponse) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -48,15 +49,7 @@ export function ReceiptScanDialog({
       return body;
     },
     onSuccess: (data) => {
-      onResult({
-        type: "expense",
-        category: data.category,
-        amount: data.total,
-        title: data.storeName,
-        note: "",
-        date: data.date,
-        source: "ocr",
-      });
+      onResult(data);
       handleOpenChange(false);
       toast.success("Struk terbaca. Periksa lalu simpan.");
     },

@@ -6,12 +6,22 @@ import { category } from "@/db/schema";
 const MAX_SIZE = 8 * 1024 * 1024; // 8MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
 
+const expenseCategories = category.enumValues.filter((c) => c !== "pemasukan");
+
+const ocrItem = z.object({
+  name: z.string(),
+  quantity: z.number().int().min(1).catch(1),
+  amount: z.number(),
+  category: z.enum(category.enumValues),
+});
+
 const ocrResult = z.object({
   storeName: z.string(),
   total: z.number(),
   date: z.string().nullable(),
   category: z.enum(category.enumValues),
   isReceipt: z.boolean(),
+  items: z.array(ocrItem).catch([]),
 });
 
 export type OcrResult = z.infer<typeof ocrResult>;
@@ -49,8 +59,13 @@ export const POST = withAuthErrors(async (req: Request) => {
               "Baca struk belanja Indonesia pada gambar ini.",
               "Ekstrak: nama toko, total pembayaran (angka rupiah, tanpa titik/koma),",
               "tanggal transaksi (format YYYY-MM-DD, null jika tidak terbaca),",
-              "dan tentukan satu kategori paling sesuai dari:",
-              category.enumValues.filter((c) => c !== "pemasukan").join(", ") + ".",
+              "kategori dominan struk, dan DAFTAR SEMUA ITEM baris per baris.",
+              "Untuk tiap item: name (nama barang), quantity (jumlah, default 1),",
+              "amount (total baris = jumlah x harga satuan, angka rupiah),",
+              "dan category paling sesuai untuk BARANG ITU SENDIRI dari:",
+              expenseCategories.join(", ") + ".",
+              "Contoh: air mineral = minuman, mie instan/roti = makanan, sabun = belanja.",
+              "Abaikan baris subtotal, pajak, tunai, dan kembalian.",
               "Set isReceipt=false jika gambar bukan struk/nota pembayaran.",
             ].join(" "),
           },
@@ -65,13 +80,23 @@ export const POST = withAuthErrors(async (req: Request) => {
           storeName: { type: "string" },
           total: { type: "number" },
           date: { type: "string", nullable: true },
-          category: {
-            type: "string",
-            enum: category.enumValues.filter((c) => c !== "pemasukan"),
-          },
+          category: { type: "string", enum: expenseCategories },
           isReceipt: { type: "boolean" },
+          items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                quantity: { type: "number" },
+                amount: { type: "number" },
+                category: { type: "string", enum: expenseCategories },
+              },
+              required: ["name", "quantity", "amount", "category"],
+            },
+          },
         },
-        required: ["storeName", "total", "category", "isReceipt"],
+        required: ["storeName", "total", "category", "isReceipt", "items"],
       },
       temperature: 0,
     },
@@ -99,10 +124,20 @@ export const POST = withAuthErrors(async (req: Request) => {
       ? parsed.date
       : new Date().toISOString().slice(0, 10);
 
+  const items = parsed.items
+    .filter((i) => i.amount > 0 && i.name.trim().length > 0)
+    .map((i) => ({
+      name: i.name.trim(),
+      quantity: Math.max(Math.round(i.quantity), 1),
+      amount: Math.round(Math.abs(i.amount)),
+      category: i.category,
+    }));
+
   return Response.json({
     storeName: parsed.storeName,
     total: Math.round(Math.abs(parsed.total)),
     date: dateValid,
     category: parsed.category,
+    items,
   });
 });

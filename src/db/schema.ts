@@ -8,6 +8,7 @@ import {
   uuid,
   date,
   index,
+  integer,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
@@ -105,6 +106,8 @@ export const transactions = pgTable(
     date: date("date").notNull(),
     source: transactionSource("source").notNull().default("manual"),
     receiptUrl: text("receipt_url"),
+    /* Menautkan transaksi hasil split dari satu nota yang sama */
+    receiptGroupId: uuid("receipt_group_id"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -112,6 +115,27 @@ export const transactions = pgTable(
     index("transactions_user_date_idx").on(t.userId, t.date),
     index("transactions_user_category_idx").on(t.userId, t.category),
   ]
+);
+
+/* ---------- Domain: rincian item nota (hasil OCR) ---------- */
+
+export const receiptItems = pgTable(
+  "receipt_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    transactionId: uuid("transaction_id")
+      .notNull()
+      .references(() => transactions.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    /* Total baris (qty x harga satuan), IDR tanpa sen */
+    amount: numeric("amount", { precision: 14, scale: 0 }).notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("receipt_items_transaction_idx").on(t.transactionId)]
 );
 
 /* ---------- Domain: budget bulanan per kategori ---------- */
@@ -164,6 +188,7 @@ export const savingsGoals = pgTable(
 );
 
 export type Transaction = typeof transactions.$inferSelect;
+export type ReceiptItem = typeof receiptItems.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
 export type Budget = typeof budgets.$inferSelect;
 export type SavingsGoal = typeof savingsGoals.$inferSelect;

@@ -18,6 +18,27 @@ export const transactionInput = z.object({
 
 export type TransactionInput = z.infer<typeof transactionInput>;
 
+export const receiptBatchInput = z.object({
+  storeName: z.string().trim().min(1, "Nama toko wajib diisi").max(120),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal tidak valid"),
+  items: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1, "Nama item wajib diisi").max(120),
+        quantity: z.coerce.number().int().min(1).default(1),
+        amount: z.coerce
+          .number()
+          .int()
+          .positive("Nominal item harus lebih dari 0")
+          .max(99_999_999_999_999),
+        category: z.enum(category.enumValues),
+      })
+    )
+    .min(1, "Minimal satu item"),
+});
+
+export type ReceiptBatchInput = z.infer<typeof receiptBatchInput>;
+
 export const budgetInput = z.object({
   category: z.enum(category.enumValues),
   amount: z.coerce.number().int().positive().max(99_999_999_999_999),
