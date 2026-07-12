@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
     default:
-      "Receiption -Aplikasi Pencatat Keuangan Otomatis dari Foto Struk",
+      "Receiption - Aplikasi Pencatat Keuangan Otomatis dari Foto Struk",
     template: "%s | Receiption",
   },
   description:
@@ -45,13 +45,13 @@ export const metadata: Metadata = {
     locale: "id_ID",
     url: APP_URL,
     siteName: "Receiption",
-    title: "Receiption -Foto Struk, Keuangan Tercatat Otomatis",
+    title: "Receiption - Foto Struk, Keuangan Tercatat Otomatis",
     description:
       "AI membaca struk belanjamu, mencatat transaksi, dan mengategorikan otomatis. Budget, statistik, target tabungan, dan insight AI dalam satu dashboard. Gratis.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Receiption -Foto Struk, Keuangan Tercatat Otomatis",
+    title: "Receiption - Foto Struk, Keuangan Tercatat Otomatis",
     description:
       "AI membaca struk belanjamu, mencatat transaksi, dan mengategorikan otomatis. Gratis untuk mahasiswa dan anak muda.",
   },
