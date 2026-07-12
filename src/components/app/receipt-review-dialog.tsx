@@ -110,8 +110,26 @@ export function ReceiptReviewDialog({
     groups.set(item.category, (groups.get(item.category) ?? 0) + item.amount);
   }
   const sum = items.reduce((s, i) => s + i.amount, 0);
+  const diff = data ? data.total - sum : 0;
   const totalMismatch =
-    data && data.total > 0 && Math.abs(sum - data.total) / data.total > 0.01;
+    data && data.total > 0 && Math.abs(diff) / data.total > 0.01;
+
+  /* Kategori dominan berdasar nilai, untuk item selisih (pajak/servis dsb.) */
+  const dominantCategory: Category =
+    [...groups.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "lainnya";
+
+  const addDifferenceItem = () => {
+    if (diff <= 0) return;
+    setItems((list) => [
+      ...list,
+      {
+        name: "Pajak & Layanan",
+        quantity: 1,
+        amount: diff,
+        category: dominantCategory,
+      },
+    ]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,10 +263,26 @@ export function ReceiptReviewDialog({
                 <span className="font-mono font-semibold">{formatIDR(sum)}</span>
               </div>
               {totalMismatch && data && (
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Total di nota terbaca {formatIDR(data.total)}. Periksa nominal
-                  item bila berbeda.
-                </p>
+                <div className="mt-1.5 flex flex-col gap-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    Total di nota terbaca {formatIDR(data.total)}, selisih{" "}
+                    {formatIDR(Math.abs(diff))}
+                    {diff > 0
+                      ? " (biasanya pajak/servis yang tidak terbaca per item)."
+                      : ". Periksa nominal item."}
+                  </p>
+                  {diff > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="self-start"
+                      onClick={addDifferenceItem}
+                    >
+                      Tambahkan selisih sebagai &ldquo;Pajak & Layanan&rdquo;
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}
