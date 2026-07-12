@@ -49,6 +49,17 @@
 }
 
 :root {
+  /* Palet kategorikal tervalidasi (dataviz) — identitas tetap per kategori */
+  --cat-makanan: #2a78d6;
+  --cat-minuman: #1baf7a;
+  --cat-transportasi: #eda100;
+  --cat-belanja: #008300;
+  --cat-hiburan: #4a3aa7;
+  --cat-pendidikan: #e34948;
+  --cat-kesehatan: #e87ba4;
+  --cat-lainnya: #eb6834;
+  --series-income: #1baf7a;
+  --series-expense: #2a78d6;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -84,6 +95,16 @@
 }
 
 .dark {
+  --cat-makanan: #3987e5;
+  --cat-minuman: #199e70;
+  --cat-transportasi: #c98500;
+  --cat-belanja: #008300;
+  --cat-hiburan: #9085e9;
+  --cat-pendidikan: #e66767;
+  --cat-kesehatan: #d55181;
+  --cat-lainnya: #d95926;
+  --series-income: #199e70;
+  --series-expense: #3987e5;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
