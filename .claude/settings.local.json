@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Ardian/AppData/Local/Temp/claude/d--PROJECT-Fullstack-expense-tracker/2e6fdbb5-9918-418c-9fcd-21b06f2fa625/scratchpad/**)",
+      "Bash(rm -rf caveman taste-skill)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}
