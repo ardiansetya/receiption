@@ -1,6 +1,9 @@
+import { createHash } from "crypto";
+import { MediaResolution } from "@google/genai";
 import { z } from "zod";
 import { requireUser, withAuthErrors } from "@/lib/require-user";
 import { getGemini, geminiErrorResponse, GEMINI_MODEL } from "@/lib/gemini";
+import { getRedis } from "@/lib/redis";
 import {
   checkBurst,
   checkMonthlyQuota,
@@ -11,6 +14,7 @@ import { category } from "@/db/schema";
 
 const MAX_SIZE = 8 * 1024 * 1024; // 8MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+const OCR_CACHE_TTL_SEC = 24 * 60 * 60;
 
 const expenseCategories = category.enumValues.filter((c) => c !== "pemasukan");
 
@@ -32,6 +36,19 @@ const ocrResult = z.object({
 
 export type OcrResult = z.infer<typeof ocrResult>;
 
+type OcrResponsePayload = {
+  storeName: string;
+  total: number;
+  date: string;
+  category: string;
+  items: {
+    name: string;
+    quantity: number;
+    amount: number;
+    category: string;
+  }[];
+};
+
 export const POST = withAuthErrors(async (req: Request) => {
   const user = await requireUser();
 
@@ -43,11 +60,6 @@ export const POST = withAuthErrors(async (req: Request) => {
   );
   if (!burst.ok) {
     return Response.json({ error: burst.error }, { status: burst.status });
-  }
-
-  const quota = await checkMonthlyQuota("ocr", user.id, LIMITS.ocrMonthly);
-  if (!quota.ok) {
-    return Response.json({ error: quota.error }, { status: quota.status });
   }
 
   const formData = await req.formData();
@@ -65,66 +77,77 @@ export const POST = withAuthErrors(async (req: Request) => {
     return Response.json({ error: "Ukuran maksimal 8MB" }, { status: 400 });
   }
 
-  const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  /* Dedup: foto sama dalam 24 jam tidak memanggil Gemini dan tidak memakan kuota */
+  const redis = getRedis();
+  const imageHash = createHash("sha256").update(buffer).digest("hex");
+  const cacheKey = `ocrcache:${imageHash}`;
+  if (redis) {
+    const cached = await redis.get<OcrResponsePayload>(cacheKey);
+    if (cached) {
+      return Response.json({ ...cached, quotaRemaining: null, cached: true });
+    }
+  }
+
+  const quota = await checkMonthlyQuota("ocr", user.id, LIMITS.ocrMonthly);
+  if (!quota.ok) {
+    return Response.json({ error: quota.error }, { status: quota.status });
+  }
+
+  const base64 = buffer.toString("base64");
 
   const ai = getGemini();
   let response;
   try {
     response = await ai.models.generateContent({
       model: GEMINI_MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { inlineData: { mimeType: file.type, data: base64 } },
-          {
-            text: [
-              "Baca struk belanja Indonesia pada gambar ini.",
-              "Ekstrak: nama toko, total pembayaran (angka rupiah, tanpa titik/koma),",
-              "tanggal transaksi (format YYYY-MM-DD, null jika tidak terbaca),",
-              "kategori dominan struk, dan DAFTAR SEMUA ITEM baris per baris.",
-              "Untuk tiap item: name (nama barang), quantity (jumlah, default 1),",
-              "amount (total baris = jumlah x harga satuan, angka rupiah),",
-              "dan category paling sesuai untuk BARANG ITU SENDIRI dari:",
-              expenseCategories.join(", ") + ".",
-              "Contoh: air mineral = minuman, mie instan/roti = makanan, sabun = belanja.",
-              "Jika ada pajak (PPN/PB1), service charge, atau biaya lain, ekstrak sebagai satu item bernama 'Pajak & Layanan' dengan category sama seperti kategori dominan nota dan amount = jumlah pajak + biaya.",
-              "Jika ada diskon, kurangkan proporsional ke amount item terkait (amount tidak boleh negatif).",
-              "Jumlah semua amount item HARUS sama dengan total pembayaran akhir.",
-              "Abaikan baris subtotal, tunai, dan kembalian.",
-              "Set isReceipt=false jika gambar bukan struk/nota pembayaran.",
-            ].join(" "),
-          },
-        ],
-      },
-    ],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: "object",
-        properties: {
-          storeName: { type: "string" },
-          total: { type: "number" },
-          date: { type: "string", nullable: true },
-          category: { type: "string", enum: expenseCategories },
-          isReceipt: { type: "boolean" },
-          items: {
-            type: "array",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: file.type, data: base64 } },
+            {
+              text: [
+                "Baca struk belanja Indonesia ini. Ekstrak: storeName, total pembayaran akhir, date (YYYY-MM-DD, null jika tak terbaca), category dominan, dan items per baris {name, quantity, amount = total baris, category}.",
+                `Pilihan category: ${expenseCategories.join(", ")}.`,
+                "Pajak/PPN/PB1/service charge jadi satu item 'Pajak & Layanan' (category = category dominan). Diskon dikurangkan proporsional ke item terkait, amount tidak boleh negatif. Jumlah amount semua item HARUS = total. Abaikan subtotal, tunai, kembalian.",
+                "isReceipt=false jika bukan struk/nota.",
+              ].join("\n"),
+            },
+          ],
+        },
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            storeName: { type: "string" },
+            total: { type: "number" },
+            date: { type: "string", nullable: true },
+            category: { type: "string", enum: expenseCategories },
+            isReceipt: { type: "boolean" },
             items: {
-              type: "object",
-              properties: {
-                name: { type: "string" },
-                quantity: { type: "number" },
-                amount: { type: "number" },
-                category: { type: "string", enum: expenseCategories },
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  quantity: { type: "number" },
+                  amount: { type: "number" },
+                  category: { type: "string", enum: expenseCategories },
+                },
+                required: ["name", "quantity", "amount", "category"],
               },
-              required: ["name", "quantity", "amount", "category"],
             },
           },
+          required: ["storeName", "total", "category", "isReceipt", "items"],
         },
-        required: ["storeName", "total", "category", "isReceipt", "items"],
-      },
-      temperature: 0,
+        temperature: 0,
+        maxOutputTokens: 2048,
+        thinkingConfig: { thinkingBudget: 0 },
+        mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
       },
     });
   } catch (err) {
@@ -165,12 +188,20 @@ export const POST = withAuthErrors(async (req: Request) => {
       category: i.category,
     }));
 
-  return Response.json({
+  const payload: OcrResponsePayload = {
     storeName: parsed.storeName,
     total: Math.round(Math.abs(parsed.total)),
     date: dateValid,
     category: parsed.category,
     items,
+  };
+
+  if (redis) {
+    await redis.set(cacheKey, payload, { ex: OCR_CACHE_TTL_SEC });
+  }
+
+  return Response.json({
+    ...payload,
     quotaRemaining: quota.remaining ?? null,
   });
 });

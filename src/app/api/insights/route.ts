@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -9,7 +10,8 @@ import { checkBurst, LIMITS } from "@/lib/rate-limit";
 import { currentMonth } from "@/lib/format";
 import { CATEGORY_LABELS } from "@/lib/categories";
 
-const INSIGHTS_CACHE_TTL_SEC = 6 * 60 * 60;
+/* Cache di-key hash data: data tidak berubah = tidak pernah panggil Gemini lagi */
+const INSIGHTS_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
 
 const insightsResult = z.object({
   insights: z
@@ -62,24 +64,6 @@ export const GET = withAuthErrors(async (req: Request) => {
   const month = url.searchParams.get("month") ?? currentMonth();
   const lastMonth = prevMonth(month);
 
-  /* Cache 6 jam per user per bulan: hemat kuota Gemini, respons instan. */
-  const redis = getRedis();
-  const cacheKey = `insights:${user.id}:${month}`;
-  if (redis) {
-    const cached = await redis.get(cacheKey);
-    if (cached) return Response.json(cached);
-  }
-
-  const burst = await checkBurst(
-    "insights",
-    user.id,
-    LIMITS.insightsBurst.limit,
-    LIMITS.insightsBurst.windowSec
-  );
-  if (!burst.ok) {
-    return Response.json({ error: burst.error }, { status: burst.status });
-  }
-
   const [thisMonthRows, lastMonthRows, budgetRows] = await Promise.all([
     expenseByCategory(user.id, month),
     expenseByCategory(user.id, lastMonth),
@@ -105,6 +89,28 @@ export const GET = withAuthErrors(async (req: Request) => {
       return `${label(b.category)}: budget ${Number(b.amount)}, terpakai ${spent}`;
     }),
   };
+
+  /* Cache berbasis hash data: key baru hanya saat data berubah */
+  const redis = getRedis();
+  const dataHash = createHash("sha256")
+    .update(JSON.stringify(dataSummary))
+    .digest("hex")
+    .slice(0, 16);
+  const cacheKey = `insights:${user.id}:${month}:${dataHash}`;
+  if (redis) {
+    const cached = await redis.get(cacheKey);
+    if (cached) return Response.json(cached);
+  }
+
+  const burst = await checkBurst(
+    "insights",
+    user.id,
+    LIMITS.insightsBurst.limit,
+    LIMITS.insightsBurst.windowSec
+  );
+  if (!burst.ok) {
+    return Response.json({ error: burst.error }, { status: burst.status });
+  }
 
   const ai = getGemini();
   let response;
@@ -153,6 +159,8 @@ export const GET = withAuthErrors(async (req: Request) => {
         required: ["insights"],
       },
       temperature: 0.4,
+      maxOutputTokens: 512,
+      thinkingConfig: { thinkingBudget: 0 },
       },
     });
   } catch (err) {

@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Category } from "@/db/schema";
+import { compressReceiptImage } from "@/lib/compress-image";
 import type { ReviewItem } from "./receipt-review-dialog";
 
 export type OcrResponse = {
@@ -56,10 +57,11 @@ export function ReceiptScanDialog({
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const handleFile = (f: File | undefined) => {
+  const handleFile = async (f: File | undefined) => {
     if (!f) return;
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
+    const compressed = await compressReceiptImage(f);
+    setFile(compressed);
+    setPreview(URL.createObjectURL(compressed));
   };
 
   const handleOpenChange = (next: boolean) => {
