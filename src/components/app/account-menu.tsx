@@ -129,12 +129,14 @@ export function AccountMenu({
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuLabel>
-          <p className="truncate text-sm font-medium">{user.name}</p>
-          <p className="truncate text-xs font-normal text-muted-foreground">
-            {user.email}
-          </p>
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            <p className="truncate text-sm font-medium">{user.name}</p>
+            <p className="truncate text-xs font-normal text-muted-foreground">
+              {user.email}
+            </p>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
 
         {otherSessions.length > 0 && (
           <>

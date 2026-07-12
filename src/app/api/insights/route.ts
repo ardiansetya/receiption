@@ -4,8 +4,12 @@ import { db } from "@/db";
 import { budgets, transactions } from "@/db/schema";
 import { requireUser, withAuthErrors } from "@/lib/require-user";
 import { getGemini, GEMINI_MODEL } from "@/lib/gemini";
+import { getRedis } from "@/lib/redis";
+import { checkBurst, LIMITS } from "@/lib/rate-limit";
 import { currentMonth } from "@/lib/format";
 import { CATEGORY_LABELS } from "@/lib/categories";
+
+const INSIGHTS_CACHE_TTL_SEC = 6 * 60 * 60;
 
 const insightsResult = z.object({
   insights: z
@@ -57,6 +61,24 @@ export const GET = withAuthErrors(async (req: Request) => {
   const url = new URL(req.url);
   const month = url.searchParams.get("month") ?? currentMonth();
   const lastMonth = prevMonth(month);
+
+  /* Cache 6 jam per user per bulan: hemat kuota Gemini, respons instan. */
+  const redis = getRedis();
+  const cacheKey = `insights:${user.id}:${month}`;
+  if (redis) {
+    const cached = await redis.get(cacheKey);
+    if (cached) return Response.json(cached);
+  }
+
+  const burst = await checkBurst(
+    "insights",
+    user.id,
+    LIMITS.insightsBurst.limit,
+    LIMITS.insightsBurst.windowSec
+  );
+  if (!burst.ok) {
+    return Response.json({ error: burst.error }, { status: burst.status });
+  }
 
   const [thisMonthRows, lastMonthRows, budgetRows] = await Promise.all([
     expenseByCategory(user.id, month),
@@ -134,6 +156,9 @@ export const GET = withAuthErrors(async (req: Request) => {
 
   try {
     const parsed = insightsResult.parse(JSON.parse(response.text ?? ""));
+    if (redis) {
+      await redis.set(cacheKey, parsed, { ex: INSIGHTS_CACHE_TTL_SEC });
+    }
     return Response.json(parsed);
   } catch {
     return Response.json(

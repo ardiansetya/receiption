@@ -13,5 +13,5 @@ export function getGemini(): GoogleGenAI {
   return client;
 }
 
-/* Alias stabil: selalu menunjuk model flash terbaru yang tersedia untuk API key ini. */
-export const GEMINI_MODEL = "gemini-flash-latest";
+/* Alias stabil ke model flash-lite terbaru: tier termurah, hemat kuota API. */
+export const GEMINI_MODEL = "gemini-flash-lite-latest";

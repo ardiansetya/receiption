@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { requireUser, withAuthErrors } from "@/lib/require-user";
 import { getGemini, GEMINI_MODEL } from "@/lib/gemini";
+import {
+  checkBurst,
+  checkMonthlyQuota,
+  refundMonthlyQuota,
+  LIMITS,
+} from "@/lib/rate-limit";
 import { category } from "@/db/schema";
 
 const MAX_SIZE = 8 * 1024 * 1024; // 8MB
@@ -27,7 +33,22 @@ const ocrResult = z.object({
 export type OcrResult = z.infer<typeof ocrResult>;
 
 export const POST = withAuthErrors(async (req: Request) => {
-  await requireUser();
+  const user = await requireUser();
+
+  const burst = await checkBurst(
+    "ocr",
+    user.id,
+    LIMITS.ocrBurst.limit,
+    LIMITS.ocrBurst.windowSec
+  );
+  if (!burst.ok) {
+    return Response.json({ error: burst.error }, { status: burst.status });
+  }
+
+  const quota = await checkMonthlyQuota("ocr", user.id, LIMITS.ocrMonthly);
+  if (!quota.ok) {
+    return Response.json({ error: quota.error }, { status: quota.status });
+  }
 
   const formData = await req.formData();
   const file = formData.get("file");
@@ -106,6 +127,7 @@ export const POST = withAuthErrors(async (req: Request) => {
   try {
     parsed = ocrResult.parse(JSON.parse(response.text ?? ""));
   } catch {
+    await refundMonthlyQuota("ocr", user.id);
     return Response.json(
       { error: "AI gagal membaca struk. Coba foto yang lebih jelas." },
       { status: 422 }
@@ -113,6 +135,7 @@ export const POST = withAuthErrors(async (req: Request) => {
   }
 
   if (!parsed.isReceipt) {
+    await refundMonthlyQuota("ocr", user.id);
     return Response.json(
       { error: "Gambar tidak terdeteksi sebagai struk." },
       { status: 422 }
@@ -139,5 +162,6 @@ export const POST = withAuthErrors(async (req: Request) => {
     date: dateValid,
     category: parsed.category,
     items,
+    quotaRemaining: quota.remaining ?? null,
   });
 });
