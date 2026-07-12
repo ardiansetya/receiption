@@ -6,7 +6,7 @@ import { Pricing } from "@/components/landing/pricing";
 import { Footer } from "@/components/landing/footer";
 
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://receiption.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL || "https://receiption-nu.vercel.app";
 
 const jsonLd = {
   "@context": "https://schema.org",
