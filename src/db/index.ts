@@ -4,7 +4,7 @@ import * as schema from "./schema";
 
 /* Placeholder agar build (tanpa env) tidak gagal; koneksi baru dibuat saat query pertama. */
 const connectionString =
-  process.env.DATABASE_URL ??
+  process.env.DATABASE_URL ||
   "postgresql://placeholder:placeholder@placeholder.local/placeholder";
 
 if (!process.env.DATABASE_URL) {
