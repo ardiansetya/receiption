@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { multiSession } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
@@ -25,7 +26,7 @@ export const auth = betterAuth({
           },
         }
       : undefined,
-  plugins: [nextCookies()],
+  plugins: [multiSession({ maximumSessions: 5 }), nextCookies()],
 });
 
 export type Session = typeof auth.$Infer.Session;

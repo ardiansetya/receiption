@@ -1,20 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { SignOut } from "@phosphor-icons/react";
+import { usePathname } from "next/navigation";
 import { navLinks } from "./nav-links";
-import { authClient } from "@/lib/auth-client";
+import { AccountMenu } from "./account-menu";
 import { cn } from "@/lib/utils";
 
-export function Sidebar({ userName }: { userName: string }) {
-  const pathname = usePathname();
-  const router = useRouter();
+type AppUser = { name: string; email: string };
 
-  const handleSignOut = async () => {
-    await authClient.signOut();
-    router.push("/login");
-  };
+export function Sidebar({ user }: { user: AppUser }) {
+  const pathname = usePathname();
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border/60 bg-card md:flex">
@@ -48,18 +43,25 @@ export function Sidebar({ userName }: { userName: string }) {
 
       <div className="border-t border-border/60 p-3">
         <div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2">
-          <span className="truncate text-sm font-medium">{userName}</span>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Keluar"
-          >
-            <SignOut size={17} />
-          </button>
+          <span className="truncate text-sm font-medium">{user.name}</span>
+          <AccountMenu user={user} />
         </div>
       </div>
     </aside>
+  );
+}
+
+export function MobileHeader({ user }: { user: AppUser }) {
+  return (
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border/60 bg-background/90 px-4 backdrop-blur-md md:hidden">
+      <Link href="/dashboard" className="flex items-center gap-2">
+        <span className="flex size-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+          R
+        </span>
+        <span className="font-semibold tracking-tight">Receiption</span>
+      </Link>
+      <AccountMenu user={user} />
+    </header>
   );
 }
 

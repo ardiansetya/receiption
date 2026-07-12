@@ -1,11 +1,10 @@
 import { ImageResponse } from "next/og";
 
-export const size = { width: 512, height: 512 };
+export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-/* Full-bleed tanpa radius: launcher (Android/iOS) memasang mask sendiri.
-   Glyph di zona aman tengah agar lolos mask maskable. */
-export default function Icon() {
+/* Ikon home screen iOS: iOS memasang rounded mask sendiri. */
+export default function AppleIcon() {
   return new ImageResponse(
     (
       <div
@@ -21,24 +20,23 @@ export default function Icon() {
       >
         <div
           style={{
-            width: 300,
-            height: 340,
+            width: 104,
+            height: 118,
             background: "#ffffff",
-            borderRadius: 28,
+            borderRadius: 12,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            /* Gerigi bawah ala struk */
             clipPath:
               "polygon(0 0, 100% 0, 100% 92%, 87.5% 100%, 75% 92%, 62.5% 100%, 50% 92%, 37.5% 100%, 25% 92%, 12.5% 100%, 0 92%)",
           }}
         >
           <div
             style={{
-              fontSize: 210,
+              fontSize: 74,
               fontWeight: 700,
               color: "#047857",
-              marginTop: -20,
+              marginTop: -8,
             }}
           >
             R
