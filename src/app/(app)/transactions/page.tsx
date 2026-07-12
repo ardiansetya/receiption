@@ -34,6 +34,7 @@ import {
   TransactionFormDialog,
   type TransactionDraft,
 } from "@/components/app/transaction-form";
+import { ReceiptScanDialog } from "@/components/app/receipt-scan-dialog";
 import type { Category, Transaction } from "@/db/schema";
 import { CATEGORY_LABELS } from "@/lib/categories";
 import { currentMonth, formatDateID, formatIDR } from "@/lib/format";
@@ -61,6 +62,7 @@ function TransactionsContent() {
   const [month, setMonth] = useState(currentMonth());
   const [category, setCategory] = useState<string>(ALL);
   const [formOpen, setFormOpen] = useState(searchParams.get("new") === "1");
+  const [scanOpen, setScanOpen] = useState(searchParams.get("scan") === "1");
   const [editing, setEditing] = useState<TransactionDraft | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
 
@@ -130,7 +132,11 @@ function TransactionsContent() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-1.5" disabled>
+          <Button
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => setScanOpen(true)}
+          >
             <Camera size={16} />
             Scan Struk
           </Button>
@@ -249,6 +255,15 @@ function TransactionsContent() {
         open={formOpen}
         onOpenChange={handleFormOpenChange}
         initial={editing}
+      />
+
+      <ReceiptScanDialog
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        onResult={(draft) => {
+          setEditing(draft);
+          setFormOpen(true);
+        }}
       />
 
       <Dialog
