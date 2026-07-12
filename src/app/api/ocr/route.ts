@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireUser, withAuthErrors } from "@/lib/require-user";
-import { getGemini, GEMINI_MODEL } from "@/lib/gemini";
+import { getGemini, geminiErrorResponse, GEMINI_MODEL } from "@/lib/gemini";
 import {
   checkBurst,
   checkMonthlyQuota,
@@ -68,8 +68,10 @@ export const POST = withAuthErrors(async (req: Request) => {
   const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
 
   const ai = getGemini();
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
+  let response;
+  try {
+    response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
     contents: [
       {
         role: "user",
@@ -120,8 +122,12 @@ export const POST = withAuthErrors(async (req: Request) => {
         required: ["storeName", "total", "category", "isReceipt", "items"],
       },
       temperature: 0,
-    },
-  });
+      },
+    });
+  } catch (err) {
+    await refundMonthlyQuota("ocr", user.id);
+    return geminiErrorResponse(err);
+  }
 
   let parsed: OcrResult;
   try {

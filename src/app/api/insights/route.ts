@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { budgets, transactions } from "@/db/schema";
 import { requireUser, withAuthErrors } from "@/lib/require-user";
-import { getGemini, GEMINI_MODEL } from "@/lib/gemini";
+import { getGemini, geminiErrorResponse, GEMINI_MODEL } from "@/lib/gemini";
 import { getRedis } from "@/lib/redis";
 import { checkBurst, LIMITS } from "@/lib/rate-limit";
 import { currentMonth } from "@/lib/format";
@@ -107,8 +107,10 @@ export const GET = withAuthErrors(async (req: Request) => {
   };
 
   const ai = getGemini();
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
+  let response;
+  try {
+    response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
     contents: [
       {
         role: "user",
@@ -151,8 +153,11 @@ export const GET = withAuthErrors(async (req: Request) => {
         required: ["insights"],
       },
       temperature: 0.4,
-    },
-  });
+      },
+    });
+  } catch (err) {
+    return geminiErrorResponse(err);
+  }
 
   try {
     const parsed = insightsResult.parse(JSON.parse(response.text ?? ""));

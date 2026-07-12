@@ -15,7 +15,10 @@ type Insight = { text: string; tone: "positive" | "warning" | "info" };
 
 async function fetchInsights(): Promise<{ insights: Insight[] }> {
   const res = await fetch("/api/insights");
-  if (!res.ok) throw new Error("Gagal memuat insight");
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "Gagal memuat insight.");
+  }
   return res.json();
 }
 
@@ -26,7 +29,7 @@ const toneStyles = {
 } as const;
 
 export function InsightsCard() {
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, error } = useQuery({
     queryKey: ["insights"],
     queryFn: fetchInsights,
     staleTime: 5 * 60_000,
@@ -50,7 +53,9 @@ export function InsightsCard() {
           </div>
         ) : isError ? (
           <p className="text-sm text-muted-foreground">
-            Insight belum tersedia. Coba lagi nanti.
+            {error instanceof Error
+              ? error.message
+              : "Insight belum tersedia. Coba lagi nanti."}
           </p>
         ) : !data || data.insights.length === 0 ? (
           <p className="text-sm text-muted-foreground">
