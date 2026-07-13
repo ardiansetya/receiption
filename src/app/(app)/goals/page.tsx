@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateID, formatIDR } from "@/lib/format";
+import { api, apiErrorMessage } from "@/lib/api";
 
 type Goal = {
   id: string;
@@ -49,9 +50,9 @@ const emptyDraft = (): GoalDraft => ({
 });
 
 async function fetchGoals(): Promise<{ items: Goal[] }> {
-  const res = await fetch("/api/goals");
-  if (!res.ok) throw new Error("Gagal memuat target");
-  return res.json();
+  const { data, error } = await api.goals.get();
+  if (error) throw new Error(apiErrorMessage(error.value, "Gagal memuat target"));
+  return data;
 }
 
 export default function GoalsPage() {
@@ -74,19 +75,17 @@ export default function GoalsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (g: GoalDraft) => {
-      const res = await fetch(g.id ? `/api/goals/${g.id}` : "/api/goals", {
-        method: g.id ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: g.name,
-          targetAmount: g.targetAmount,
-          savedAmount: g.savedAmount,
-          deadline: g.deadline || null,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? "Gagal menyimpan target");
+      const payload = {
+        name: g.name,
+        targetAmount: g.targetAmount,
+        savedAmount: g.savedAmount,
+        deadline: g.deadline || null,
+      };
+      const { error } = g.id
+        ? await api.goals({ id: g.id }).patch(payload)
+        : await api.goals.post(payload);
+      if (error) {
+        throw new Error(apiErrorMessage(error.value, "Gagal menyimpan target"));
       }
     },
     onSuccess: () => {
@@ -99,12 +98,10 @@ export default function GoalsPage() {
 
   const fundMutation = useMutation({
     mutationFn: async ({ goal, amount }: { goal: Goal; amount: number }) => {
-      const res = await fetch(`/api/goals/${goal.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ savedAmount: goal.savedAmount + amount }),
-      });
-      if (!res.ok) throw new Error("Gagal menambah dana");
+      const { error } = await api
+        .goals({ id: goal.id })
+        .patch({ savedAmount: goal.savedAmount + amount });
+      if (error) throw new Error("Gagal menambah dana");
     },
     onSuccess: () => {
       invalidate();
@@ -117,8 +114,8 @@ export default function GoalsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/goals/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Gagal menghapus target");
+      const { error } = await api.goals({ id }).delete();
+      if (error) throw new Error("Gagal menghapus target");
     },
     onSuccess: () => {
       invalidate();

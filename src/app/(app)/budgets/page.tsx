@@ -28,6 +28,7 @@ import { CategoryIcon } from "@/components/app/category-icon";
 import type { Category } from "@/db/schema";
 import { CATEGORY_LABELS, EXPENSE_CATEGORIES } from "@/lib/categories";
 import { currentMonth, formatIDR } from "@/lib/format";
+import { api, apiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type BudgetItem = {
@@ -40,9 +41,9 @@ type BudgetItem = {
 async function fetchBudgets(
   month: string
 ): Promise<{ month: string; items: BudgetItem[] }> {
-  const res = await fetch(`/api/budgets?month=${month}`);
-  if (!res.ok) throw new Error("Gagal memuat budget");
-  return res.json();
+  const { data, error } = await api.budgets.get({ query: { month } });
+  if (error) throw new Error(apiErrorMessage(error.value, "Gagal memuat budget"));
+  return data;
 }
 
 export default function BudgetsPage() {
@@ -68,14 +69,9 @@ export default function BudgetsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (input: { category: Category; amount: number }) => {
-      const res = await fetch("/api/budgets", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...input, month }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? "Gagal menyimpan budget");
+      const { error } = await api.budgets.put({ ...input, month });
+      if (error) {
+        throw new Error(apiErrorMessage(error.value, "Gagal menyimpan budget"));
       }
     },
     onSuccess: () => {
@@ -88,8 +84,8 @@ export default function BudgetsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/budgets/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Gagal menghapus budget");
+      const { error } = await api.budgets({ id }).delete();
+      if (error) throw new Error("Gagal menghapus budget");
     },
     onSuccess: () => {
       invalidate();

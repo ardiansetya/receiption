@@ -9,25 +9,14 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryIcon } from "@/components/app/category-icon";
-import type { Category } from "@/db/schema";
 import { CATEGORY_LABELS } from "@/lib/categories";
 import { formatDateID, formatIDR } from "@/lib/format";
+import { api, apiErrorMessage } from "@/lib/api";
 
-type Detail = {
-  id: string;
-  title: string;
-  category: Category;
-  amount: string;
-  date: string;
-  source: "manual" | "ocr";
-  items: { id: string; name: string; quantity: number; amount: number }[];
-  siblings: { id: string; category: Category; amount: number }[];
-};
-
-async function fetchDetail(id: string): Promise<Detail> {
-  const res = await fetch(`/api/transactions/${id}`);
-  if (!res.ok) throw new Error("Gagal memuat detail");
-  return res.json();
+async function fetchDetail(id: string) {
+  const { data, error } = await api.transactions({ id }).get();
+  if (error) throw new Error(apiErrorMessage(error.value, "Gagal memuat detail"));
+  return data;
 }
 
 export function TransactionDetailDialog({

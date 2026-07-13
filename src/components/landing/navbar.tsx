@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { List, X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 
 const links = [
   { href: "#fitur", label: "Fitur" },
@@ -13,6 +14,8 @@ const links = [
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const { data: session, isPending } = authClient.useSession();
+  const loggedIn = !isPending && !!session?.user;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
@@ -39,12 +42,20 @@ export function Navbar() {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Button variant="ghost" size="sm" render={<Link href="/login" />}>
-            Masuk
-          </Button>
-          <Button size="sm" render={<Link href="/register" />}>
-            Mulai Gratis
-          </Button>
+          {loggedIn ? (
+            <Button size="sm" render={<Link href="/dashboard" />}>
+              Dashboard
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" render={<Link href="/login" />}>
+                Masuk
+              </Button>
+              <Button size="sm" render={<Link href="/register" />}>
+                Mulai Gratis
+              </Button>
+            </>
+          )}
         </div>
 
         <button
@@ -71,10 +82,18 @@ export function Navbar() {
               </Link>
             ))}
             <div className="mt-3 flex flex-col gap-2">
-              <Button variant="outline" render={<Link href="/login" />}>
-                Masuk
-              </Button>
-              <Button render={<Link href="/register" />}>Mulai Gratis</Button>
+              {loggedIn ? (
+                <Button render={<Link href="/dashboard" />}>Dashboard</Button>
+              ) : (
+                <>
+                  <Button variant="outline" render={<Link href="/login" />}>
+                    Masuk
+                  </Button>
+                  <Button render={<Link href="/register" />}>
+                    Mulai Gratis
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import type { Category } from "@/db/schema";
 import { compressReceiptImage } from "@/lib/compress-image";
+import { api, apiErrorMessage } from "@/lib/api";
 import type { ReviewItem } from "./receipt-review-dialog";
 
 export type OcrResponse = {
@@ -40,14 +41,11 @@ export function ReceiptScanDialog({
 
   const mutation = useMutation({
     mutationFn: async (f: File): Promise<OcrResponse> => {
-      const formData = new FormData();
-      formData.append("file", f);
-      const res = await fetch("/api/ocr", { method: "POST", body: formData });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.error ?? "Gagal membaca struk");
+      const { data, error } = await api.ocr.post({ file: f });
+      if (error) {
+        throw new Error(apiErrorMessage(error.value, "Gagal membaca struk"));
       }
-      return body;
+      return data;
     },
     onSuccess: (data) => {
       onResult(data);

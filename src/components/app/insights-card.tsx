@@ -9,17 +9,15 @@ import {
 } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { api, apiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type Insight = { text: string; tone: "positive" | "warning" | "info" };
-
-async function fetchInsights(): Promise<{ insights: Insight[] }> {
-  const res = await fetch("/api/insights");
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.error ?? "Gagal memuat insight.");
+async function fetchInsights() {
+  const { data, error } = await api.insights.get();
+  if (error) {
+    throw new Error(apiErrorMessage(error.value, "Gagal memuat insight."));
   }
-  return res.json();
+  return data;
 }
 
 const toneStyles = {

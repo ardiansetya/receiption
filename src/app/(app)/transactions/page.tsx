@@ -43,6 +43,7 @@ import { TransactionDetailDialog } from "@/components/app/transaction-detail-dia
 import type { Category, Transaction } from "@/db/schema";
 import { CATEGORY_LABELS } from "@/lib/categories";
 import { currentMonth, formatDateID, formatIDR } from "@/lib/format";
+import { api, apiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const ALL = "semua";
@@ -51,11 +52,17 @@ async function fetchTransactions(
   month: string,
   category: string
 ): Promise<{ items: Transaction[]; total: number }> {
-  const params = new URLSearchParams({ month, limit: "100" });
-  if (category !== ALL) params.set("category", category);
-  const res = await fetch(`/api/transactions?${params}`);
-  if (!res.ok) throw new Error("Gagal memuat transaksi");
-  return res.json();
+  const { data, error } = await api.transactions.get({
+    query: {
+      month,
+      limit: 100,
+      ...(category !== ALL ? { category: category as Category } : {}),
+    },
+  });
+  if (error) {
+    throw new Error(apiErrorMessage(error.value, "Gagal memuat transaksi"));
+  }
+  return data;
 }
 
 function TransactionsContent() {
@@ -81,8 +88,8 @@ function TransactionsContent() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Gagal menghapus transaksi");
+      const { error } = await api.transactions({ id }).delete();
+      if (error) throw new Error("Gagal menghapus transaksi");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });

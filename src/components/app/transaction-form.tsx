@@ -22,6 +22,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { Category, Transaction } from "@/db/schema";
 import { CATEGORY_LABELS, EXPENSE_CATEGORIES } from "@/lib/categories";
+import { api, apiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export type TransactionDraft = {
@@ -70,28 +71,25 @@ export function TransactionFormDialog({
 
   const mutation = useMutation({
     mutationFn: async (data: TransactionDraft) => {
-      const res = await fetch(
-        data.id ? `/api/transactions/${data.id}` : "/api/transactions",
-        {
-          method: data.id ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: data.type,
-            category: data.category,
-            amount: data.amount,
-            title: data.title,
-            note: data.note || null,
-            date: data.date,
-            source: data.source ?? "manual",
-            receiptUrl: data.receiptUrl ?? null,
-          }),
-        }
-      );
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? "Gagal menyimpan transaksi");
+      const payload = {
+        type: data.type,
+        category: data.category,
+        amount: data.amount,
+        title: data.title,
+        note: data.note || null,
+        date: data.date,
+        source: data.source ?? "manual",
+        receiptUrl: data.receiptUrl ?? null,
+      };
+      const { data: result, error } = data.id
+        ? await api.transactions({ id: data.id }).patch(payload)
+        : await api.transactions.post(payload);
+      if (error) {
+        throw new Error(
+          apiErrorMessage(error.value, "Gagal menyimpan transaksi")
+        );
       }
-      return res.json();
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });

@@ -10,22 +10,16 @@ import {
   CategoryDonut,
   CashflowChart,
 } from "@/components/app/stats-charts";
-import type { Category } from "@/db/schema";
 import { CATEGORY_LABELS } from "@/lib/categories";
 import { currentMonth, formatIDR } from "@/lib/format";
+import { api, apiErrorMessage } from "@/lib/api";
 
-type Stats = {
-  month: string;
-  monthExpense: number;
-  avgDaily: number;
-  byCategory: { category: Category; total: number }[];
-  series: { month: string; income: number; expense: number }[];
-};
-
-async function fetchStats(month: string): Promise<Stats> {
-  const res = await fetch(`/api/stats?month=${month}`);
-  if (!res.ok) throw new Error("Gagal memuat statistik");
-  return res.json();
+async function fetchStats(month: string) {
+  const { data, error } = await api.stats.get({ query: { month } });
+  if (error) {
+    throw new Error(apiErrorMessage(error.value, "Gagal memuat statistik"));
+  }
+  return data;
 }
 
 export default function StatsPage() {

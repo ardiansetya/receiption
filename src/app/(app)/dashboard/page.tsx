@@ -17,25 +17,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ExpenseChart } from "@/components/app/expense-chart";
 import { InsightsCard } from "@/components/app/insights-card";
 import { formatIDR, formatMonthLong, currentMonth } from "@/lib/format";
+import { api, apiErrorMessage } from "@/lib/api";
 
-type Summary = {
-  month: string;
-  balance: number;
-  monthIncome: number;
-  monthExpense: number;
-  budgetTotal: number;
-  budgetSpent: number;
-  budgetRemaining: number;
-  goalTarget: number;
-  goalSaved: number;
-  goalCount: number;
-  series: { month: string; expense: number; income: number }[];
-};
-
-async function fetchSummary(): Promise<Summary> {
-  const res = await fetch(`/api/summary?month=${currentMonth()}`);
-  if (!res.ok) throw new Error("Gagal memuat ringkasan");
-  return res.json();
+async function fetchSummary() {
+  const { data, error } = await api.summary.get({
+    query: { month: currentMonth() },
+  });
+  if (error) throw new Error(apiErrorMessage(error.value, "Gagal memuat ringkasan"));
+  return data;
 }
 
 export default function DashboardPage() {

@@ -24,6 +24,7 @@ import { CategoryIcon } from "@/components/app/category-icon";
 import type { Category } from "@/db/schema";
 import { CATEGORY_LABELS, EXPENSE_CATEGORIES } from "@/lib/categories";
 import { formatIDR } from "@/lib/format";
+import { api, apiErrorMessage } from "@/lib/api";
 
 export type ReviewItem = {
   name: string;
@@ -68,16 +69,17 @@ export function ReceiptReviewDialog({
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/transactions/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeName, date, items }),
+      const { data: result, error } = await api.transactions.batch.post({
+        storeName,
+        date,
+        items,
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.error ?? "Gagal menyimpan transaksi");
+      if (error) {
+        throw new Error(
+          apiErrorMessage(error.value, "Gagal menyimpan transaksi")
+        );
       }
-      return body as { transactions: { id: string }[] };
+      return result;
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
