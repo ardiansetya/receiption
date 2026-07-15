@@ -53,10 +53,12 @@
 - [Phosphor Icons](https://phosphoricons.com/)
 
 **Backend**
-- Next.js API Routes (Route Handlers)
+- [Elysia](https://elysiajs.com/) — server API, di-mount pada catch-all Route Handler Next.js (`/api/[[...slugs]]`)
+- [Eden Treaty](https://elysiajs.com/eden/overview) — client API dengan type safety end-to-end (tipe respons/body ditarik langsung dari server)
+- [Bun](https://bun.sh/) — package manager & task runner
 - [Drizzle ORM](https://orm.drizzle.team/) + [Neon PostgreSQL](https://neon.tech/) (serverless, driver HTTP)
 - [Better Auth](https://www.better-auth.com/) — autentikasi
-- [Zod](https://zod.dev/) — validasi
+- [Zod](https://zod.dev/) — validasi (dipakai langsung sebagai schema Elysia via Standard Schema)
 
 **AI**
 - [Google Gemini](https://ai.google.dev/) (`@google/genai`, model `gemini-flash-latest`) — OCR struk multimodal + insight, dengan structured output (`responseSchema`)
@@ -73,17 +75,18 @@
 │                        Browser (Client)                     │
 │   React 19 + TanStack Query + shadcn/ui + Recharts + Motion │
 └───────────────────────────┬─────────────────────────────────┘
-                            │ fetch / mutation
+                            │ Eden Treaty (type-safe fetch)
 ┌───────────────────────────▼─────────────────────────────────┐
 │                   Next.js App Router (Vercel)               │
 │                                                             │
-│   Route Handlers  ── Better Auth ── session guard          │
+│   Elysia (/api/[[...slugs]]) ── Better Auth ── auth macro   │
 │        │                                                    │
 │        ├── /api/ocr, /api/insights ──► Google Gemini       │
 │        └── CRUD ──► Drizzle ORM ──► Neon PostgreSQL         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+- **Semua endpoint API** (kecuali `/api/auth/*` milik Better Auth) ditangani satu server [Elysia](https://elysiajs.com/) di `src/server/app.ts`, di-mount lewat catch-all Route Handler `src/app/api/[[...slugs]]/route.ts`. Client memanggilnya lewat **Eden Treaty** (`src/lib/api.ts`) sehingga tipe request/response tersinkron otomatis dengan server.
 - **Route group `(app)`** dilindungi: layout mengecek sesi Better Auth, redirect ke `/login` bila belum masuk.
 - **Route group `(auth)`** untuk halaman login/register/reset yang tidak butuh sesi.
 - **Landing page** (`/`) statik dan ter-index (SEO), memuat JSON-LD `WebApplication`.
@@ -103,7 +106,9 @@ src/
 │   │   ├── budgets/
 │   │   ├── stats/
 │   │   └── goals/
-│   ├── api/                     # Route Handlers (lihat tabel API)
+│   ├── api/
+│   │   ├── [[...slugs]]/        # catch-all: mount server Elysia
+│   │   └── auth/[...all]/       # handler Better Auth
 │   ├── layout.tsx               # root layout + metadata SEO
 │   ├── page.tsx                 # landing page + JSON-LD
 │   ├── robots.ts                # robots.txt
@@ -120,14 +125,21 @@ src/
 ├── db/
 │   ├── schema.ts                # skema Drizzle
 │   └── index.ts                 # koneksi Neon
+├── server/
+│   ├── app.ts                   # server Elysia (gabungan semua route + onError)
+│   ├── auth-macro.ts            # macro `auth: true` (sesi Better Auth)
+│   ├── month.ts                 # util rentang bulan
+│   └── routes/                  # transactions, budgets, goals, stats,
+│                                #   summary, insights, ocr
 └── lib/
+    ├── api.ts                   # Eden Treaty client (type-safe)
     ├── auth.ts                  # konfigurasi Better Auth (server)
     ├── auth-client.ts           # client Better Auth
     ├── gemini.ts                # klien Gemini
     ├── validators.ts            # skema Zod
     ├── categories.ts            # label & daftar kategori
     ├── format.ts                # format Rupiah, tanggal, bulan
-    └── require-user.ts          # guard sesi untuk API
+    └── require-user.ts          # guard sesi untuk server component
 ```
 
 ---
@@ -136,8 +148,8 @@ src/
 
 ### Prasyarat
 
-- [Node.js](https://nodejs.org/) 20 atau lebih baru
-- [pnpm](https://pnpm.io/) (`npm install -g pnpm`)
+- [Bun](https://bun.sh/) 1.x — Windows: `powershell -c "irm bun.sh/install.ps1 | iex"`, Linux/macOS: `curl -fsSL https://bun.sh/install | bash`
+- [Node.js](https://nodejs.org/) 20 atau lebih baru (runtime Next.js)
 - Akun [Neon](https://neon.tech/) (gratis) untuk PostgreSQL
 - API key [Google Gemini](https://aistudio.google.com/apikey) (gratis) untuk OCR & insight
 
