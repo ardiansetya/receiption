@@ -42,41 +42,84 @@ import {
 import { TransactionDetailDialog } from "@/components/app/transaction-detail-dialog";
 import type { Category, Transaction } from "@/db/schema";
 import { CATEGORY_LABELS } from "@/lib/categories";
-import { currentMonth, formatDateID, formatIDR } from "@/lib/format";
+import {
+  currentMonth,
+  formatDateID,
+  formatIDR,
+  formatMonthLong,
+} from "@/lib/format";
 import { api, apiErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const ALL = "semua";
 
+/** Periode pengelompokan daftar transaksi. */
+type Periode = "hari" | "bulan" | "tahun" | "semua";
+/** Filter jenis transaksi. */
+type Tipe = "expense" | "income" | "all";
+
+const periodeItems: { value: Periode; label: string }[] = [
+  { value: "bulan", label: "Per bulan" },
+  { value: "hari", label: "Per hari" },
+  { value: "tahun", label: "Per tahun" },
+  { value: "semua", label: "Semua waktu" },
+];
+
+const tipeItems: { value: Tipe; label: string }[] = [
+  { value: "expense", label: "Pengeluaran" },
+  { value: "income", label: "Pemasukan" },
+  { value: "all", label: "Semua" },
+];
+
+/** Kunci bucket per periode dari tanggal transaksi (YYYY-MM-DD). */
+function periodKey(date: string, periode: Periode): string {
+  if (periode === "hari") return date;
+  if (periode === "bulan") return date.slice(0, 7);
+  if (periode === "tahun") return date.slice(0, 4);
+  return "all";
+}
+
+/** Label bucket yang tampil di header grup. */
+function periodLabel(key: string, periode: Periode): string {
+  if (periode === "hari") return formatDateID(key);
+  if (periode === "bulan") return formatMonthLong(key);
+  if (periode === "tahun") return key;
+  return "Semua waktu";
+}
+
 /**
- * Kelompokkan transaksi (sudah terurut tanggal desc) per tanggal
- * dengan total bersih harian: pemasukan plus, pengeluaran minus.
+ * Kelompokkan transaksi (sudah terurut tanggal desc) per periode terpilih
+ * dengan total bersih tiap bucket: pemasukan plus, pengeluaran minus.
  */
-function groupByDate(items: Transaction[]) {
-  const groups: { date: string; total: number; rows: Transaction[] }[] = [];
+function groupByPeriod(items: Transaction[], periode: Periode) {
+  const groups: { key: string; total: number; rows: Transaction[] }[] = [];
   for (const t of items) {
-    const signed =
-      t.type === "income" ? Number(t.amount) : -Number(t.amount);
+    const signed = t.type === "income" ? Number(t.amount) : -Number(t.amount);
+    const key = periodKey(t.date, periode);
     const last = groups[groups.length - 1];
-    if (last && last.date === t.date) {
+    if (last && last.key === key) {
       last.rows.push(t);
       last.total += signed;
     } else {
-      groups.push({ date: t.date, total: signed, rows: [t] });
+      groups.push({ key, total: signed, rows: [t] });
     }
   }
   return groups;
 }
 
-async function fetchTransactions(
-  month: string,
-  category: string
-): Promise<{ items: Transaction[]; total: number }> {
+async function fetchTransactions(opts: {
+  periode: Periode;
+  tipe: Tipe;
+  category: string;
+  month: string;
+}): Promise<{ items: Transaction[]; total: number }> {
   const { data, error } = await api.transactions.get({
     query: {
-      month,
-      limit: 100,
-      ...(category !== ALL ? { category: category as Category } : {}),
+      limit: 500,
+      /* Hanya "per hari" yang dibatasi satu bulan; periode lain lintas waktu */
+      ...(opts.periode === "hari" ? { month: opts.month } : {}),
+      ...(opts.tipe !== "all" ? { type: opts.tipe } : {}),
+      ...(opts.category !== ALL ? { category: opts.category as Category } : {}),
     },
   });
   if (error) {
@@ -93,6 +136,8 @@ function TransactionsContent() {
 
   const [month, setMonth] = useState(currentMonth());
   const [category, setCategory] = useState<string>(ALL);
+  const [periode, setPeriode] = useState<Periode>("bulan");
+  const [tipe, setTipe] = useState<Tipe>("expense");
   const [formOpen, setFormOpen] = useState(searchParams.get("new") === "1");
   const [scanOpen, setScanOpen] = useState(searchParams.get("scan") === "1");
   const [editing, setEditing] = useState<TransactionDraft | null>(null);
@@ -102,9 +147,21 @@ function TransactionsContent() {
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const { data, isPending } = useQuery({
-    queryKey: ["transactions", month, category],
-    queryFn: () => fetchTransactions(month, category),
+    queryKey: ["transactions", periode, tipe, month, category],
+    queryFn: () => fetchTransactions({ periode, tipe, category, month }),
   });
+
+  /* Total keseluruhan filter aktif: bersih (pemasukan plus, pengeluaran minus) */
+  const grandTotal = (data?.items ?? []).reduce(
+    (sum, t) => sum + (t.type === "income" ? Number(t.amount) : -Number(t.amount)),
+    0
+  );
+  const totalLabel =
+    tipe === "expense"
+      ? "Total pengeluaran"
+      : tipe === "income"
+        ? "Total pemasukan"
+        : "Total bersih";
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -183,12 +240,46 @@ function TransactionsContent() {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        <Input
-          type="month"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          className="w-40"
-        />
+        <Select
+          items={periodeItems}
+          value={periode}
+          onValueChange={(v) => v && setPeriode(v as Periode)}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Periode" />
+          </SelectTrigger>
+          <SelectContent>
+            {periodeItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          items={tipeItems}
+          value={tipe}
+          onValueChange={(v) => v && setTipe(v as Tipe)}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Jenis" />
+          </SelectTrigger>
+          <SelectContent>
+            {tipeItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {periode === "hari" && (
+          <Input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="w-40"
+          />
+        )}
         <Select
           items={categoryFilterItems}
           value={category}
@@ -221,8 +312,8 @@ function TransactionsContent() {
                 <Receipt size={24} />
               </span>
               <p className="max-w-64 text-sm text-muted-foreground">
-                Belum ada transaksi di bulan ini. Catat manual atau scan struk
-                belanjamu.
+                Belum ada transaksi untuk filter ini. Catat manual atau scan
+                struk belanjamu.
               </p>
               <Button size="sm" onClick={openCreate}>
                 Catat Transaksi
@@ -231,11 +322,11 @@ function TransactionsContent() {
           </Card>
         ) : (
           <div className="flex flex-col gap-4">
-            {groupByDate(data.items).map((group) => (
-              <div key={group.date} className="flex flex-col gap-2">
+            {groupByPeriod(data.items, periode).map((group) => (
+              <div key={group.key} className="flex flex-col gap-2">
                 <div className="flex items-baseline justify-between px-1">
                   <p className="text-xs font-medium text-muted-foreground">
-                    {formatDateID(group.date)}
+                    {periodLabel(group.key, periode)}
                   </p>
                   <p
                     className={cn(
@@ -310,6 +401,26 @@ function TransactionsContent() {
                 ))}
               </div>
             ))}
+
+            {/* Total keseluruhan filter aktif */}
+            <div className="sticky bottom-4 mt-2 flex items-center justify-between rounded-xl border border-border/60 bg-card/95 px-4 py-3 shadow-sm backdrop-blur">
+              <span className="text-sm font-medium">{totalLabel}</span>
+              <span
+                className={cn(
+                  "font-mono text-base font-bold",
+                  tipe === "income"
+                    ? "text-primary"
+                    : tipe === "expense"
+                      ? "text-foreground"
+                      : grandTotal >= 0
+                        ? "text-primary"
+                        : "text-foreground"
+                )}
+              >
+                {tipe === "all" ? (grandTotal >= 0 ? "+" : "-") : ""}
+                {formatIDR(Math.abs(grandTotal))}
+              </span>
+            </div>
           </div>
         )}
       </div>
