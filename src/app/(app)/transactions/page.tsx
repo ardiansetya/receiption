@@ -71,11 +71,26 @@ const tipeItems: { value: Tipe; label: string }[] = [
   { value: "all", label: "Semua" },
 ];
 
+/**
+ * Normalkan tanggal ke "YYYY-MM-DD" pakai komponen lokal.
+ * Eden treaty menghidupkan ISO string respons jadi Date, jadi t.date
+ * bisa berupa Date maupun string. Komponen lokal dipakai agar selaras
+ * dengan formatDateID (zona waktu pengguna), bukan UTC.
+ */
+function toDateStr(date: string | Date): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 /** Kunci bucket per periode dari tanggal transaksi (YYYY-MM-DD). */
 function periodKey(date: string, periode: Periode): string {
-  if (periode === "hari") return date;
-  if (periode === "bulan") return date.slice(0, 7);
-  if (periode === "tahun") return date.slice(0, 4);
+  const d = toDateStr(date);
+  if (periode === "hari") return d;
+  if (periode === "bulan") return d.slice(0, 7);
+  if (periode === "tahun") return d.slice(0, 4);
   return "all";
 }
 
