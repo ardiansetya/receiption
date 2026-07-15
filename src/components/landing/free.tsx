@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { Gift, CreditCard, ShieldCheck, CaretDown } from "@phosphor-icons/react";
+import { FAQS } from "@/lib/faq";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -9,29 +10,6 @@ const perks = [
   { icon: Gift, label: "Semua fitur terbuka" },
   { icon: CreditCard, label: "Tanpa kartu kredit" },
   { icon: ShieldCheck, label: "Data cuma buat kamu" },
-];
-
-const faqs = [
-  {
-    q: "Kok bisa gratis?",
-    a: "Receiption pakai model AI paling hemat plus banyak optimasi biaya, jadi pemakaian pribadi bisa ditanggung gratis. Tidak ada paket berbayar yang disembunyikan.",
-  },
-  {
-    q: "Ada batasannya?",
-    a: "Scan struk dengan AI dibatasi 30 per bulan, cukup untuk pemakaian harian. Pencatatan manual, budget, statistik, dan target tabungan tanpa batas.",
-  },
-  {
-    q: "Data keuanganku aman?",
-    a: "Datamu hanya dipakai untuk menampilkan ringkasanmu sendiri. Tidak dijual dan tidak dibagikan ke pihak ketiga.",
-  },
-  {
-    q: "Nanti tiba-tiba jadi berbayar?",
-    a: "Fitur inti tetap gratis. Kalau suatu saat ada fitur berat yang butuh biaya, itu jadi tambahan opsional, bukan mengunci yang sekarang.",
-  },
-  {
-    q: "Perlu install aplikasi?",
-    a: "Tidak wajib. Receiption jalan di browser dan bisa dipasang ke layar depan HP seperti aplikasi biasa.",
-  },
 ];
 
 export function Free() {
@@ -75,7 +53,7 @@ export function Free() {
           transition={{ duration: 0.6, delay: 0.1, ease }}
           className="mx-auto mt-14 flex max-w-3xl flex-col gap-3"
         >
-          {faqs.map((faq) => (
+          {FAQS.map((faq) => (
             <details
               key={faq.q}
               className="group rounded-2xl border border-border/60 bg-card px-6 transition-colors open:border-primary/30"

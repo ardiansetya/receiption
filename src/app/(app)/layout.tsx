@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/require-user";
 import { Providers } from "@/components/providers";
 import { Sidebar, MobileHeader, MobileNav } from "@/components/app/sidebar";
+
+/* Halaman privat: jangan diindeks, fokuskan crawl budget ke landing. */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function AppLayout({
   children,
