@@ -48,6 +48,26 @@ import { cn } from "@/lib/utils";
 
 const ALL = "semua";
 
+/**
+ * Kelompokkan transaksi (sudah terurut tanggal desc) per tanggal
+ * dengan total bersih harian: pemasukan plus, pengeluaran minus.
+ */
+function groupByDate(items: Transaction[]) {
+  const groups: { date: string; total: number; rows: Transaction[] }[] = [];
+  for (const t of items) {
+    const signed =
+      t.type === "income" ? Number(t.amount) : -Number(t.amount);
+    const last = groups[groups.length - 1];
+    if (last && last.date === t.date) {
+      last.rows.push(t);
+      last.total += signed;
+    } else {
+      groups.push({ date: t.date, total: signed, rows: [t] });
+    }
+  }
+  return groups;
+}
+
 async function fetchTransactions(
   month: string,
   category: string
@@ -210,8 +230,24 @@ function TransactionsContent() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex flex-col gap-2">
-            {data.items.map((t) => (
+          <div className="flex flex-col gap-4">
+            {groupByDate(data.items).map((group) => (
+              <div key={group.date} className="flex flex-col gap-2">
+                <div className="flex items-baseline justify-between px-1">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {formatDateID(group.date)}
+                  </p>
+                  <p
+                    className={cn(
+                      "font-mono text-xs font-semibold",
+                      group.total >= 0 ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    {group.total >= 0 ? "+" : "-"}
+                    {formatIDR(Math.abs(group.total))}
+                  </p>
+                </div>
+                {group.rows.map((t) => (
               <div
                 key={t.id}
                 className="group flex items-center gap-3 rounded-xl border border-border/60 bg-card p-3.5"
@@ -239,7 +275,7 @@ function TransactionsContent() {
                 >
                   <p className="truncate text-sm font-medium">{t.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {CATEGORY_LABELS[t.category]} · {formatDateID(t.date)}
+                    {CATEGORY_LABELS[t.category]}
                     {t.source === "ocr" ? " · dari struk" : ""}
                   </p>
                 </button>
@@ -270,6 +306,8 @@ function TransactionsContent() {
                     <Trash size={16} />
                   </button>
                 </div>
+              </div>
+                ))}
               </div>
             ))}
           </div>
