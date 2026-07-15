@@ -9,7 +9,7 @@ import { authClient } from "@/lib/auth-client";
 const links = [
   { href: "#fitur", label: "Fitur" },
   { href: "#cara-kerja", label: "Cara Kerja" },
-  { href: "#harga", label: "Harga" },
+  { href: "#gratis", label: "Gratis" },
 ];
 
 export function Navbar() {

@@ -2,7 +2,7 @@ import { Navbar } from "@/components/landing/navbar";
 import { Hero } from "@/components/landing/hero";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Features } from "@/components/landing/features";
-import { Pricing } from "@/components/landing/pricing";
+import { Free } from "@/components/landing/free";
 import { Footer } from "@/components/landing/footer";
 
 const APP_URL =
@@ -18,23 +18,14 @@ const jsonLd = {
   applicationCategory: "FinanceApplication",
   operatingSystem: "Web",
   inLanguage: "id",
-  offers: [
-    {
-      "@type": "Offer",
-      name: "Free",
-      price: "0",
-      priceCurrency: "IDR",
-      description: "30 scan struk per bulan, budget dasar, dashboard ringkasan.",
-    },
-    {
-      "@type": "Offer",
-      name: "Pro",
-      price: "29000",
-      priceCurrency: "IDR",
-      description:
-        "Scan struk tanpa batas, insight AI lengkap, statistik lanjutan, export PDF dan Excel.",
-    },
-  ],
+  offers: {
+    "@type": "Offer",
+    name: "Gratis",
+    price: "0",
+    priceCurrency: "IDR",
+    description:
+      "Semua fitur gratis: 30 scan struk AI per bulan, pencatatan manual, budget, statistik, target tabungan, dan insight AI.",
+  },
   featureList:
     "Scan struk dengan AI, kategorisasi otomatis, budget bulanan, statistik pengeluaran, target tabungan, insight AI",
 };
@@ -50,7 +41,7 @@ export default function Home() {
       <Hero />
       <HowItWorks />
       <Features />
-      <Pricing />
+      <Free />
       <Footer />
     </main>
   );
