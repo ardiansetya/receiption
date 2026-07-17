@@ -41,9 +41,22 @@ const faqJsonLd = {
   })),
 };
 
+/* Sinyal utama Google untuk nama situs di hasil pencarian (SERP site name). */
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Receiption",
+  alternateName: "Receiption - Pencatat Keuangan dari Foto Struk",
+  url: APP_URL,
+};
+
 export default function Home() {
   return (
     <main className="flex-1">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
