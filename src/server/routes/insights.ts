@@ -4,7 +4,12 @@ import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { budgets, transactions } from "@/db/schema";
-import { getGemini, geminiErrorInfo, GEMINI_MODEL } from "@/lib/gemini";
+import {
+  getGemini,
+  geminiErrorInfo,
+  GEMINI_MODEL,
+  THINKING_MINIMAL,
+} from "@/lib/gemini";
 import { getRedis } from "@/lib/redis";
 import { checkBurst, LIMITS } from "@/lib/rate-limit";
 import { currentMonth } from "@/lib/format";
@@ -158,7 +163,7 @@ export const insightsRoutes = new Elysia({ prefix: "/insights" })
             },
             temperature: 0.4,
             maxOutputTokens: 512,
-            thinkingConfig: { thinkingBudget: 0 },
+            thinkingConfig: THINKING_MINIMAL,
           },
         });
       } catch (err) {

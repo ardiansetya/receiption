@@ -2,7 +2,12 @@ import { createHash } from "crypto";
 import { Elysia, t } from "elysia";
 import { MediaResolution } from "@google/genai";
 import { z } from "zod";
-import { getGemini, geminiErrorInfo, GEMINI_MODEL } from "@/lib/gemini";
+import {
+  getGemini,
+  geminiErrorInfo,
+  GEMINI_MODEL,
+  THINKING_MINIMAL,
+} from "@/lib/gemini";
 import { getRedis } from "@/lib/redis";
 import {
   checkBurst,
@@ -139,7 +144,7 @@ export const ocrRoutes = new Elysia({ prefix: "/ocr" }).use(authGuard).post(
           },
           temperature: 0,
           maxOutputTokens: 2048,
-          thinkingConfig: { thinkingBudget: 0 },
+          thinkingConfig: THINKING_MINIMAL,
           mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
         },
       });

@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, type ThinkingConfig } from "@google/genai";
 
 let client: GoogleGenAI | null = null;
 
@@ -12,6 +12,15 @@ export function getGemini(): GoogleGenAI {
 
 /* Alias stabil ke model flash-lite terbaru: tier termurah, hemat kuota API. */
 export const GEMINI_MODEL = "gemini-3.5-flash-lite";
+
+/*
+ * Gemini 3.x memakai thinkingLevel; thinkingBudget hanya valid di Gemini 2.5
+ * dan ditolak 400 INVALID_ARGUMENT oleh model Gemini 3.
+ * MINIMAL = padanan terdekat thinkingBudget: 0 (latensi & biaya paling rendah).
+ */
+export const THINKING_MINIMAL: ThinkingConfig = {
+  thinkingLevel: ThinkingLevel.MINIMAL,
+};
 
 /**
  * Petakan error API Gemini ke status + pesan yang bisa
