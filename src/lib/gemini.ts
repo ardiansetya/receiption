@@ -11,7 +11,7 @@ export function getGemini(): GoogleGenAI {
 }
 
 /* Alias stabil ke model flash-lite terbaru: tier termurah, hemat kuota API. */
-export const GEMINI_MODEL = "gemini-flash-lite-latest";
+export const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 /**
  * Petakan error API Gemini ke status + pesan yang bisa
