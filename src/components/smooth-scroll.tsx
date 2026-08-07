@@ -2,7 +2,6 @@
 
 import { ReactLenis } from "lenis/react";
 import { useReducedMotion } from "motion/react";
-import "lenis/dist/lenis.css";
 
 /**
  * Smooth scrolling global via Lenis (root = window/<html>).

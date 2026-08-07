@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { Elysia } from "elysia";
-import { and, eq, ne } from "drizzle-orm";
+import { and, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -11,7 +11,7 @@ import {
 import { receiptBatchInput, transactionInput } from "@/lib/validators";
 import { authGuard } from "@/server/auth-macro";
 import { buildReceiptBatch } from "@/server/receipt-batch";
-import { listTransactionsData } from "@/server/data/transactions";
+import { monthRange } from "@/server/month";
 
 const listQuery = z.object({
   month: z
@@ -28,7 +28,44 @@ export const transactionsRoutes = new Elysia({ prefix: "/transactions" })
   .use(authGuard)
   .get(
     "/",
-    ({ user, query }) => listTransactionsData(user.id, query),
+    async ({ user, query }) => {
+      const conditions = [eq(transactions.userId, user.id)];
+
+      if (query.month) {
+        const { start, end } = monthRange(query.month);
+        conditions.push(
+          gte(transactions.date, start),
+          lte(transactions.date, end)
+        );
+      }
+      if (query.category) {
+        conditions.push(eq(transactions.category, query.category));
+      }
+      if (query.type) {
+        conditions.push(eq(transactions.type, query.type));
+      }
+
+      const where = and(...conditions);
+
+      const [rows, countRows] = await Promise.all([
+        db
+          .select()
+          .from(transactions)
+          .where(where)
+          .orderBy(desc(transactions.date), desc(transactions.createdAt))
+          .limit(query.limit ?? 50)
+          .offset(query.offset ?? 0),
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(transactions)
+          .where(where),
+      ]);
+
+      return {
+        items: rows,
+        total: Number(countRows[0]?.count ?? 0),
+      };
+    },
     { auth: true, query: listQuery }
   )
   .post(

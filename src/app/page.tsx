@@ -1,4 +1,3 @@
-import { SmoothScroll } from "@/components/smooth-scroll";
 import { Navbar } from "@/components/landing/navbar";
 import { Hero } from "@/components/landing/hero";
 import { HowItWorks } from "@/components/landing/how-it-works";
@@ -51,30 +50,27 @@ const websiteJsonLd = {
   url: APP_URL,
 };
 
-/* Lenis hanya di landing: halaman aplikasi tidak perlu ikut memuat lenis + motion. */
 export default function Home() {
   return (
-    <SmoothScroll>
-      <main className="flex-1">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-        />
-        <Navbar />
-        <Hero />
-        <HowItWorks />
-        <Features />
-        <Free />
-        <Footer />
-      </main>
-    </SmoothScroll>
+    <main className="flex-1">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      <Navbar />
+      <Hero />
+      <HowItWorks />
+      <Features />
+      <Free />
+      <Footer />
+    </main>
   );
 }
