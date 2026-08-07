@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "@/components/ui/sonner";
-import { SmoothScroll } from "@/components/smooth-scroll";
-import "lenis/dist/lenis.css";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -83,7 +81,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col font-sans">
-        <SmoothScroll>{children}</SmoothScroll>
+        {children}
         <Toaster />
         <SpeedInsights />
       </body>
