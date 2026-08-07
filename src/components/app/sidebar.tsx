@@ -70,7 +70,13 @@ export function MobileNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 backdrop-blur-md md:hidden">
-      <div className="grid grid-cols-5">
+      {/* Kolom mengikuti jumlah menu agar selalu satu baris */}
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${navLinks.length}, minmax(0, 1fr))`,
+        }}
+      >
         {navLinks.map((link) => {
           const active = pathname.startsWith(link.href);
           return (
@@ -78,12 +84,12 @@ export function MobileNav() {
               key={link.href}
               href={link.href}
               className={cn(
-                "flex flex-col items-center gap-1 py-2.5 text-[10px]",
+                "flex min-w-0 flex-col items-center gap-1 px-0.5 py-2.5 text-[10px]",
                 active ? "text-primary" : "text-muted-foreground"
               )}
             >
               <link.icon size={20} weight={active ? "fill" : "regular"} />
-              {link.label}
+              <span className="w-full truncate text-center">{link.label}</span>
             </Link>
           );
         })}
