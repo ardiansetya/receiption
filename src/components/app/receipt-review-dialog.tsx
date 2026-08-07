@@ -63,14 +63,26 @@ const toDraft = (item: ReviewItem): DraftItem => ({
   assignees: [],
 });
 
+const blankItem = (category: Category = "makanan"): DraftItem => ({
+  name: "",
+  quantity: 1,
+  amount: 0,
+  category,
+  shared: false,
+  assignees: [],
+});
+
 export function ReceiptReviewDialog({
   open,
   onOpenChange,
   data,
+  manualSplit = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   data: ReceiptReviewData | null;
+  /** Patungan tanpa nota: mode split terkunci aktif, item diisi manual. */
+  manualSplit?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [storeName, setStoreName] = useState("");
@@ -83,11 +95,17 @@ export function ReceiptReviewDialog({
     if (open && data) {
       setStoreName(data.storeName);
       setDate(data.date);
-      setItems(data.items.map(toDraft));
-      setSplitMode(false);
+      setItems(
+        data.items.length > 0
+          ? data.items.map(toDraft)
+          : manualSplit
+            ? [blankItem()]
+            : []
+      );
+      setSplitMode(manualSplit);
       setPeople([]);
     }
-  }, [open, data]);
+  }, [open, data, manualSplit]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -215,17 +233,7 @@ export function ReceiptReviewDialog({
   };
 
   const addItem = () => {
-    setItems((list) => [
-      ...list,
-      {
-        name: "",
-        quantity: 1,
-        amount: 0,
-        category: dominantCategory,
-        shared: false,
-        assignees: [],
-      },
-    ]);
+    setItems((list) => [...list, blankItem(dominantCategory)]);
   };
 
   const copySplitText = async () => {
@@ -276,17 +284,22 @@ export function ReceiptReviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Periksa Hasil Scan</DialogTitle>
+          <DialogTitle>
+            {manualSplit ? "Patungan Tanpa Nota" : "Periksa Hasil Scan"}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="rr-store">Nama toko</Label>
+              <Label htmlFor="rr-store">
+                {manualSplit ? "Nama acara" : "Nama toko"}
+              </Label>
               <Input
                 id="rr-store"
                 required
                 maxLength={120}
+                placeholder={manualSplit ? "Makan di Warteg" : undefined}
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
               />
@@ -304,33 +317,44 @@ export function ReceiptReviewDialog({
           </div>
 
           <div className="rounded-xl border border-border/60 p-3">
-            <button
-              type="button"
-              onClick={() => setSplitMode((v) => !v)}
-              aria-pressed={splitMode}
-              className="flex w-full items-center gap-2 text-left"
-            >
-              <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <UsersThree size={16} />
-              </span>
-              <span className="flex-1">
-                <span className="block text-sm font-medium">
-                  Bagi bareng teman
+            {manualSplit ? (
+              <div className="flex items-center gap-2">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <UsersThree size={16} />
                 </span>
-                <span className="block text-xs text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   Hanya bagianmu yang masuk pengeluaran
                 </span>
-              </span>
-              <span
-                className={
-                  splitMode
-                    ? "rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground"
-                    : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"
-                }
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSplitMode((v) => !v)}
+                aria-pressed={splitMode}
+                className="flex w-full items-center gap-2 text-left"
               >
-                {splitMode ? "Aktif" : "Nonaktif"}
-              </span>
-            </button>
+                <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <UsersThree size={16} />
+                </span>
+                <span className="flex-1">
+                  <span className="block text-sm font-medium">
+                    Bagi bareng teman
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    Hanya bagianmu yang masuk pengeluaran
+                  </span>
+                </span>
+                <span
+                  className={
+                    splitMode
+                      ? "rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground"
+                      : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"
+                  }
+                >
+                  {splitMode ? "Aktif" : "Nonaktif"}
+                </span>
+              </button>
+            )}
 
             {splitMode && (
               <div className="mt-3 border-t border-border/60 pt-3">

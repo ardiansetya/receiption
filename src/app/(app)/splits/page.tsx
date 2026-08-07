@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle, Copy, Trash, UsersThree } from "@phosphor-icons/react";
+import { CheckCircle, Copy, Plus, Trash, UsersThree } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ReceiptReviewDialog,
+  type ReceiptReviewData,
+} from "@/components/app/receipt-review-dialog";
 import { formatDateID, formatIDR } from "@/lib/format";
 import { formatSplitText } from "@/lib/split";
 import { api, apiErrorMessage } from "@/lib/api";
@@ -50,6 +54,16 @@ export default function SplitsPage() {
   const queryClient = useQueryClient();
   const [openId, setOpenId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<BillSummary | null>(null);
+  const [manual, setManual] = useState<ReceiptReviewData | null>(null);
+
+  /* Patungan tanpa nota: mulai dari form kosong bertanggal hari ini */
+  const startManual = () =>
+    setManual({
+      storeName: "",
+      date: new Date().toISOString().slice(0, 10),
+      total: 0,
+      items: [],
+    });
 
   const { data, isPending } = useQuery({
     queryKey: ["splits"],
@@ -118,12 +132,18 @@ export default function SplitsPage() {
 
   return (
     <div>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Patungan</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Tagihan yang kamu bagi dengan teman. Buat lewat Scan Struk lalu
-          aktifkan &ldquo;Bagi bareng teman&rdquo;.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Patungan</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Tagihan yang kamu bagi dengan teman. Dari scan struk, atau isi
+            manual kalau tidak ada notanya.
+          </p>
+        </div>
+        <Button onClick={startManual} className="gap-1.5">
+          <Plus size={16} weight="bold" />
+          Buat Patungan
+        </Button>
       </div>
 
       <div className="mt-6">
@@ -140,9 +160,13 @@ export default function SplitsPage() {
                 <UsersThree size={24} />
               </span>
               <p className="max-w-80 text-sm text-muted-foreground">
-                Belum ada patungan. Scan struk makan bareng, tandai siapa makan
-                apa, lalu hanya bagianmu yang masuk pengeluaran.
+                Belum ada patungan. Scan struk makan bareng atau isi manual,
+                tandai siapa makan apa, lalu hanya bagianmu yang masuk
+                pengeluaran.
               </p>
+              <Button size="sm" onClick={startManual}>
+                Buat Patungan
+              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -217,6 +241,13 @@ export default function SplitsPage() {
           </div>
         )}
       </div>
+
+      <ReceiptReviewDialog
+        open={Boolean(manual)}
+        onOpenChange={(o) => !o && setManual(null)}
+        data={manual}
+        manualSplit
+      />
 
       {/* Detail + tandai lunas */}
       <Dialog open={Boolean(openId)} onOpenChange={(o) => !o && setOpenId(null)}>
