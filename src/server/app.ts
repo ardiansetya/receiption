@@ -6,6 +6,7 @@ import { statsRoutes } from "@/server/routes/stats";
 import { summaryRoutes } from "@/server/routes/summary";
 import { insightsRoutes } from "@/server/routes/insights";
 import { ocrRoutes } from "@/server/routes/ocr";
+import { splitsRoutes } from "@/server/routes/splits";
 
 /** Ambil pesan issue pertama dari ValidationError (zod/TypeBox) agar toast tetap ramah. */
 function validationMessage(err: unknown): string {
@@ -40,7 +41,8 @@ export const app = new Elysia({ prefix: "/api" })
   .use(statsRoutes)
   .use(summaryRoutes)
   .use(insightsRoutes)
-  .use(ocrRoutes);
+  .use(ocrRoutes)
+  .use(splitsRoutes);
 
 /** Tipe aplikasi untuk Eden treaty (end-to-end type safety). */
 export type App = typeof app;
