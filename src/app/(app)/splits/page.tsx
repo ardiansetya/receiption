@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle, Copy, Plus, Trash, UsersThree } from "@phosphor-icons/react";
+import {
+  Camera,
+  CheckCircle,
+  Copy,
+  Plus,
+  Trash,
+  UsersThree,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -19,6 +26,7 @@ import {
   ReceiptReviewDialog,
   type ReceiptReviewData,
 } from "@/components/app/receipt-review-dialog";
+import { ReceiptScanDialog } from "@/components/app/receipt-scan-dialog";
 import { formatDateID, formatIDR } from "@/lib/format";
 import { formatSplitText } from "@/lib/split";
 import { api, apiErrorMessage } from "@/lib/api";
@@ -55,6 +63,7 @@ export default function SplitsPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<BillSummary | null>(null);
   const [manual, setManual] = useState<ReceiptReviewData | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
 
   /* Patungan tanpa nota: mulai dari form kosong bertanggal hari ini */
   const startManual = () =>
@@ -140,10 +149,20 @@ export default function SplitsPage() {
             manual kalau tidak ada notanya.
           </p>
         </div>
-        <Button onClick={startManual} className="gap-1.5">
-          <Plus size={16} weight="bold" />
-          Buat Patungan
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setScanOpen(true)}
+            className="gap-1.5"
+          >
+            <Camera size={16} />
+            Scan Struk
+          </Button>
+          <Button onClick={startManual} className="gap-1.5">
+            <Plus size={16} weight="bold" />
+            Buat Patungan
+          </Button>
+        </div>
       </div>
 
       <div className="mt-6">
@@ -164,9 +183,18 @@ export default function SplitsPage() {
                 tandai siapa makan apa, lalu hanya bagianmu yang masuk
                 pengeluaran.
               </p>
-              <Button size="sm" onClick={startManual}>
-                Buat Patungan
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setScanOpen(true)}
+                >
+                  Scan Struk
+                </Button>
+                <Button size="sm" onClick={startManual}>
+                  Buat Patungan
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -241,6 +269,30 @@ export default function SplitsPage() {
           </div>
         )}
       </div>
+
+      <ReceiptScanDialog
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        onResult={(result) =>
+          setManual({
+            storeName: result.storeName,
+            date: result.date,
+            total: result.total,
+            /* Item tak terbaca: pakai total nota sebagai satu item agar tetap bisa dibagi */
+            items:
+              result.items.length > 0
+                ? result.items
+                : [
+                    {
+                      name: result.storeName,
+                      quantity: 1,
+                      amount: result.total,
+                      category: result.category,
+                    },
+                  ],
+          })
+        }
+      />
 
       <ReceiptReviewDialog
         open={Boolean(manual)}

@@ -285,7 +285,7 @@ export function ReceiptReviewDialog({
       <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {manualSplit ? "Patungan Tanpa Nota" : "Periksa Hasil Scan"}
+            {manualSplit ? "Buat Patungan" : "Periksa Hasil Scan"}
           </DialogTitle>
         </DialogHeader>
 
@@ -293,7 +293,7 @@ export function ReceiptReviewDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">
               <Label htmlFor="rr-store">
-                {manualSplit ? "Nama acara" : "Nama toko"}
+                {manualSplit ? "Nama toko / acara" : "Nama toko"}
               </Label>
               <Input
                 id="rr-store"
