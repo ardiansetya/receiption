@@ -7,10 +7,10 @@ import {
   receiptItems,
   transactions,
   category as categoryEnum,
-  type Category,
 } from "@/db/schema";
 import { receiptBatchInput, transactionInput } from "@/lib/validators";
 import { authGuard } from "@/server/auth-macro";
+import { buildReceiptBatch } from "@/server/receipt-batch";
 import { monthRange } from "@/server/month";
 
 const listQuery = z.object({
@@ -97,57 +97,18 @@ export const transactionsRoutes = new Elysia({ prefix: "/transactions" })
   .post(
     "/batch",
     async ({ user, body, status }) => {
-      const { storeName, date, items } = body;
       const receiptGroupId = randomUUID();
-
-      /* Kelompokkan item per kategori */
-      const groups = new Map<Category, typeof items>();
-      for (const item of items) {
-        const list = groups.get(item.category) ?? [];
-        list.push(item);
-        groups.set(item.category, list);
-      }
-
-      /* Id transaksi dibuat di aplikasi agar insert transaksi + item bisa satu batch */
-      const txRows = [...groups.entries()].map(([cat, groupItems]) => ({
-        id: randomUUID(),
-        userId: user.id,
-        type: "expense" as const,
-        category: cat,
-        amount: String(groupItems.reduce((s, i) => s + i.amount, 0)),
-        title: storeName,
-        date,
-        source: "ocr" as const,
+      const { txRows, itemRows, summary } = buildReceiptBatch(user.id, {
+        ...body,
         receiptGroupId,
-        items: groupItems,
-      }));
-
-      const itemRows = txRows.flatMap((tx) =>
-        tx.items.map((i) => ({
-          transactionId: tx.id,
-          userId: user.id,
-          name: i.name,
-          quantity: i.quantity,
-          amount: String(i.amount),
-        }))
-      );
+      });
 
       await db.batch([
-        db
-          .insert(transactions)
-          .values(txRows.map(({ items: _items, ...tx }) => tx)),
+        db.insert(transactions).values(txRows),
         db.insert(receiptItems).values(itemRows),
       ]);
 
-      return status(201, {
-        receiptGroupId,
-        transactions: txRows.map((tx) => ({
-          id: tx.id,
-          category: tx.category,
-          amount: Number(tx.amount),
-          itemCount: tx.items.length,
-        })),
-      });
+      return status(201, { receiptGroupId, transactions: summary });
     },
     { auth: true, body: receiptBatchInput }
   )

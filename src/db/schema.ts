@@ -187,9 +187,69 @@ export const savingsGoals = pgTable(
   (t) => [index("savings_goals_user_idx").on(t.userId)]
 );
 
+/* ---------- Domain: split bill (patungan) ---------- */
+
+/*
+ * Peserta disimpan sebagai nama bebas (bukan akun), jadi seluruh isi tabel
+ * split_* dimiliki oleh satu user: pembuat tagihan.
+ */
+export const splitBills = pgTable(
+  "split_bills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /* Nama toko/acara */
+    title: text("title").notNull(),
+    date: date("date").notNull(),
+    totalAmount: numeric("total_amount", { precision: 14, scale: 0 }).notNull(),
+    /* Porsi pembuat tagihan; hanya nilai ini yang masuk ledger */
+    myAmount: numeric("my_amount", { precision: 14, scale: 0 }).notNull(),
+    /* Menautkan ke transaksi porsi pengguna yang dibuat bersamaan */
+    receiptGroupId: uuid("receipt_group_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("split_bills_user_date_idx").on(t.userId, t.date)]
+);
+
+export const splitParticipants = pgTable(
+  "split_participants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    billId: uuid("bill_id")
+      .notNull()
+      .references(() => splitBills.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 0 }).notNull(),
+    settledAt: timestamp("settled_at"),
+  },
+  (t) => [index("split_participants_bill_idx").on(t.billId)]
+);
+
+export const splitBillItems = pgTable(
+  "split_bill_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    billId: uuid("bill_id")
+      .notNull()
+      .references(() => splitBills.id, { onDelete: "cascade" }),
+    /* null = porsi pembuat tagihan */
+    participantId: uuid("participant_id").references(
+      () => splitParticipants.id,
+      { onDelete: "cascade" }
+    ),
+    name: text("name").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 0 }).notNull(),
+  },
+  (t) => [index("split_bill_items_bill_idx").on(t.billId)]
+);
+
 export type Transaction = typeof transactions.$inferSelect;
 export type ReceiptItem = typeof receiptItems.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
 export type Budget = typeof budgets.$inferSelect;
 export type SavingsGoal = typeof savingsGoals.$inferSelect;
+export type SplitBill = typeof splitBills.$inferSelect;
+export type SplitParticipant = typeof splitParticipants.$inferSelect;
 export type Category = (typeof category.enumValues)[number];
